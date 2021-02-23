@@ -102,7 +102,7 @@ class BinanceService extends EventEmmiter {
         let isLast = false;
         if(baseDateTime.getTime() > klinesPretty[klinesPretty.length - 1].opentime &&
             baseDateTime.getTime() < klinesPretty[klinesPretty.length - 1].closetime) {
-                isLast = false;
+                isLast = true;
         }
 
         return { klines: klinesPretty, isLast };

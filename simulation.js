@@ -8,7 +8,7 @@ const PercentTradeStrategy = require('./strategy/percentstrategy');
 // const MacdEma200Strategy = require('./strategy/macdema200strategy');
 
 const simulationConfig = {
-    symbol: 'BNBUSDT',
+    symbol: 'LITUSDT',
     interval: '1m',
     startTime: new Date(2019,9,25),
     Strategy: PercentTradeStrategy
@@ -73,15 +73,18 @@ const simulation = async() => {
         closetime: { $gt: simulationConfig.startTime }
     }
 
-    const firstKline = await 
-        KlineModel.findOne(searhQuery)
-            .sort({ closetime: 1 })
-            .limit(1)
+    let firstKline;
+    do {
+        firstKline = await 
+            KlineModel.findOne(searhQuery)
+                .sort({ closetime: 1 })
+                .limit(1);
 
-    if(!firstKline) {
-        consoleLogger.info("Import data");
-        await importHistoricalData();
-    }
+        if(!firstKline) {
+            consoleLogger.info("Import data");
+            await importHistoricalData();
+        }
+    } while(!firstKline)
 
     let lowerClosetime = new Date(firstKline.closetime);
     let higherCloseTime = new Date(firstKline.closetime);
