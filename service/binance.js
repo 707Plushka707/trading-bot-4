@@ -4,10 +4,16 @@ const EventEmmiter = require('events');
 const binance = new Binance().options({
     APIKEY: process.env.API_KEY,
     APISECRET: process.env.API_SECRET,
-    hedgeMode: true
+    hedgeMode: true,
+    test: true
 });
 
 class BinanceService extends EventEmmiter {
+
+    async init() {
+        settings = await binance.futuresChangePositionSideDual(true);
+        console.log(settings);
+    }
 
     listen(params) {
 
@@ -138,13 +144,19 @@ class BinanceService extends EventEmmiter {
         // console.log(o);
 
         
-        let sell = await binance.futuresMarketSell("TOMOUSDT", 1, { positionSide: "LONG" });
-        console.log(sell);
+        // let sell = await binance.futuresMarketSell("TOMOUSDT", 1, { positionSide: "LONG" });
+        // console.log(sell);
 
         
         // let o = await binance.futuresAllOrders()
 
         // console.log(o)
+
+        let buy = await binance.futuresMarketBuy("BTCUSDT", 0.02);
+        //let sell = await binance.futuresMarketSell("BTCUSDT", 0.001, { positionSide: "LONG" });
+        const res = await binance.futuresPositionRisk( { symbol: "BTCUSDT" } );
+        const a = res.filter(r => r.symbol == "BTCUSDT")[0]
+        console.log(a)
 
     }
 }

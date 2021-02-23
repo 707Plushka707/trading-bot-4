@@ -8,9 +8,10 @@ const PercentTradeStrategy = require('./strategy/percentstrategy');
 // const MacdEma200Strategy = require('./strategy/macdema200strategy');
 
 const simulationConfig = {
-    symbol: 'LITUSDT',
+    symbol: 'BTCUSDT',
     interval: '1m',
     startTime: new Date(2019,9,25),
+    maxHistory: 400,
     Strategy: PercentTradeStrategy
 };
 
@@ -90,7 +91,7 @@ const simulation = async() => {
     let higherCloseTime = new Date(firstKline.closetime);
     higherCloseTime.setDate(higherCloseTime.getDate() + 1);
 
-    const percentTradeStrategy = new simulationConfig.Strategy();
+    const percentTradeStrategy = new simulationConfig.Strategy(simulationConfig.maxHistory);
 
     do {
         const query = { ...searhQuery, closetime: { $gt: lowerClosetime,  $lt: higherCloseTime } }
@@ -106,7 +107,7 @@ const simulation = async() => {
             percentTradeStrategy.addKline(klines[i].toObject());
         }
         
-        consoleLogger.info(`Simulation completed until ${higherCloseTime}`);
+        // consoleLogger.info(`Simulation completed until ${higherCloseTime}`);
 
         lowerClosetime = new Date(klines[klines.length - 1].closetime);
         higherCloseTime = new Date(klines[klines.length - 1].closetime);

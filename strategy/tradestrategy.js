@@ -2,20 +2,20 @@ const EventEmmiter = require('events');
 const Wallet = require('./wallet');
 const { MACD, EMA, RSI } = require("talib-binding");
 
-const MAX_HISTORY = 400;
-
 class TradeStrategy extends EventEmmiter {
 
     #klines = new Array();
+    maxHistory;
     wallet = null;
 
-    constructor() {
+    constructor(maxHistory) {
         super();
         if (this.constructor === TradeStrategy) {
             throw new TypeError('Abstract class "TradeStrategy" cannot be instantiated directly');
         }
         this.klines = new Array();
         this.wallet = new Wallet();
+        this.maxHistory = maxHistory;
 
         // -- Events Start
       
@@ -44,7 +44,7 @@ class TradeStrategy extends EventEmmiter {
     addKline(kline) {
         this.klines.push(kline);
 
-        if(this.klines.length > MAX_HISTORY) {
+        if(this.klines.length > this.maxHistory) {
             this.klines.shift();
             this.evaluate();
         }
