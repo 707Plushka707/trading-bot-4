@@ -14,7 +14,9 @@ class PercentTradeStrategy extends TradeStrategy {
 
     longs = new Array();
     shorts = new Array();
+    pnl = 0;
 
+    baseBid = -1;
     basePrice = -1;
     range = -1;
 
@@ -25,10 +27,10 @@ class PercentTradeStrategy extends TradeStrategy {
 
         // get last kline
         const lastKline = this.klines[this.klines.length - 1];
-        const beforeLastKline = this.klines[this.klines.length - 2];
 
         if(this.longs.length == 0 && this.shorts.length == 0) {
-            this.addLong(lastKline.close, this.totalAsset * 0.1, lastKline.closetime);
+            this.baseBid = this.totalAsset * 0.1;
+            this.addLong(lastKline.close, this.baseBid, lastKline.closetime);
             this.initBasePriceRange();
             return;
         }
@@ -40,6 +42,8 @@ class PercentTradeStrategy extends TradeStrategy {
             let currentPrice = nextLongPrice;
 
             while(currentPrice < lastKline.close) {
+
+                this.updatePNL(currentPrice);
 
                 let closeTrade = false;
                 if(this.longs.length >= 1 && this.shorts.length == 0){
@@ -56,9 +60,11 @@ class PercentTradeStrategy extends TradeStrategy {
 
                     this.longs = new Array();
                     this.shorts = new Array();
+
+                    this.baseBid = this.totalAsset * 0.1;
                 }
 
-                this.addLong(currentPrice, this.totalAsset * 0.1, lastKline.closetime);
+                this.addLong(currentPrice, this.baseBid, lastKline.closetime);
                 this.initBasePriceRange();
 
                 currentPrice = this.getNextLongPrice();
@@ -70,6 +76,8 @@ class PercentTradeStrategy extends TradeStrategy {
             let currentPrice = nextShortPrice;
 
             while(currentPrice > lastKline.close) {
+
+                this.updatePNL(currentPrice);
 
                 let closeTrade = false;
                 if(this.shorts.length >= 1 && this.longs.length == 0){
@@ -86,9 +94,11 @@ class PercentTradeStrategy extends TradeStrategy {
 
                     this.longs = new Array();
                     this.shorts = new Array();
+                    
+                    this.baseBid = this.totalAsset * 0.1;
                 }
 
-                this.addShort(currentPrice, this.totalAsset * 0.1, lastKline.closetime);
+                this.addShort(currentPrice, this.baseBid, lastKline.closetime);
                 this.initBasePriceRange();
 
                 currentPrice = this.getNextShortPrice();
@@ -96,6 +106,17 @@ class PercentTradeStrategy extends TradeStrategy {
             return;
         }
 
+    }
+
+    updatePNL(currentPrice) {
+        this.PNL = this.totalAsset;
+        for(let i = 0; i< this.longs.length; i++) {
+            this.PNL += this.longs[i].qty * currentPrice;
+        }
+
+        for(let i = 0; i< this.shorts.length; i++) {
+            this.PNL += this.shorts[i].amount - (this.shorts[i].qty * currentPrice) + this.shorts[i].amount;
+        }
     }
 
     log(type, lastKline) {
