@@ -8,7 +8,7 @@ const PercentTradeStrategy = require('./strategy/percentstrategy');
 // const MacdEma200Strategy = require('./strategy/macdema200strategy');
 
 const simulationConfig = {
-    symbol: 'BTCUSDT',
+    symbol: 'BNBUSDT',
     interval: '1m',
     startTime: new Date(2019,9,25),
     maxHistory: 400,

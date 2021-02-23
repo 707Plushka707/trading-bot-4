@@ -1,4 +1,5 @@
 const TradeStrategy = require("./tradestrategy");
+const Bucket = require("../utils/bucket");
 const { datediff, formatDate } = require("../utils/date");
 
 const SPREAD = 0.03;
@@ -16,6 +17,9 @@ class PercentTradeStrategy extends TradeStrategy {
 
     basePrice = -1;
     range = -1;
+
+    bucketHours = new Bucket();
+    bucketBounces = new Bucket();
 
     evaluate() {
 
@@ -104,14 +108,23 @@ class PercentTradeStrategy extends TradeStrategy {
             )
         );
         const endTime = lastKline.closetime;
+        const hours = Math.round(datediff(endTime, startTime)/60);
 
         const logMessage = 
             `close ${type}, ` + 
             `total : ${this.totalAsset}, ` + 
             `bounces : ${bounces}, ` + 
-            `hours : ${Math.round(datediff(endTime, startTime)/60)}, ` + 
+            `hours : ${hours}, ` + 
             `time : ${formatDate(lastKline.closetime)}`;
+
         console.log(logMessage);
+
+        // Add to buckets;
+        this.bucketBounces.add(bounces);
+        this.bucketHours.add(hours);
+
+        // console.log(this.bucketBounces.data)
+        // console.log(this.bucketHours.data)
     }
 
     closeAllTrades(currentPrice) {
