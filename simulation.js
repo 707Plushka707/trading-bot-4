@@ -106,6 +106,8 @@ const simulation = async() => {
         for(let i=0; i < klines.length; i++) {
             percentTradeStrategy.addKline(klines[i].toObject());
         }
+        console.log("hours", percentTradeStrategy.bucketHours)
+        console.log("trades", percentTradeStrategy.bucketTradeCount)
         
         // consoleLogger.info(`Simulation completed until ${higherCloseTime}`);
 

@@ -1,27 +1,27 @@
 const TradeStrategy = require("./tradestrategy");
 const Bucket = require("../utils/bucket");
 const { datediff, formatDate } = require("../utils/date");
+const { MACD, EMA, RSI } = require("talib-binding");
 
-const SPREAD = 0.03;
-const MAX_DIFF = 0;
 
 class PercentTradeStrategy extends TradeStrategy {
 
     AMOUNT_FOR_TRADES = 100;
     SPREAD = 0.02;
+    MAX_DIFF = 0;
 
     totalAsset = 1000;
 
     longs = new Array();
     shorts = new Array();
-    pnl = 0;
+    tradeValue = 0;
 
-    baseBid = -1;
+    baseBid = 100;
     basePrice = -1;
     range = -1;
 
     bucketHours = new Bucket();
-    bucketBounces = new Bucket();
+    bucketTradeCount = new Bucket();
 
     evaluate() {
 
@@ -29,8 +29,15 @@ class PercentTradeStrategy extends TradeStrategy {
         const lastKline = this.klines[this.klines.length - 1];
 
         if(this.longs.length == 0 && this.shorts.length == 0) {
-            this.baseBid = this.totalAsset * 0.1;
-            this.addLong(lastKline.close, this.baseBid, lastKline.closetime);
+            //todo
+            //this.baseBid = this.totalAsset * 0.1;
+
+            const trend = this.isDownOrUpTrend()
+            if(trend == 1) {
+                this.addLong(lastKline.close, this.baseBid, lastKline.closetime);
+            } else {
+                this.addShort(lastKline.close, this.baseBid, lastKline.closetime);
+            }
             this.initBasePriceRange();
             return;
         }
@@ -43,28 +50,35 @@ class PercentTradeStrategy extends TradeStrategy {
 
             while(currentPrice < lastKline.close) {
 
-                this.updatePNL(currentPrice);
+                this.updateTradeValue(currentPrice);
+                let trend = 1;
 
                 let closeTrade = false;
                 if(this.longs.length >= 1 && this.shorts.length == 0){
                     closeTrade = true;
                 }
-                if(this.longs.length >= this.shorts.length + 1){
+                if(this.longs.length >= this.shorts.length + this.MAX_DIFF){
                     closeTrade = true;
                 }
 
                 if(closeTrade) {
 
                     this.closeAllTrades(currentPrice);
-                    this.log("long", lastKline);
+                    this.logClose("long", lastKline.closetime);
 
                     this.longs = new Array();
                     this.shorts = new Array();
 
-                    this.baseBid = this.totalAsset * 0.1;
+                    // TODO
+                    // this.baseBid = this.totalAsset * 0.1;
+                    trend = this.isDownOrUpTrend();
                 }
 
-                this.addLong(currentPrice, this.baseBid, lastKline.closetime);
+                if(trend == 1) {
+                    this.addLong(currentPrice, this.baseBid, lastKline.closetime);
+                } else {
+                    this.addShort(currentPrice, this.baseBid, lastKline.closetime);
+                }
                 this.initBasePriceRange();
 
                 currentPrice = this.getNextLongPrice();
@@ -77,28 +91,35 @@ class PercentTradeStrategy extends TradeStrategy {
 
             while(currentPrice > lastKline.close) {
 
-                this.updatePNL(currentPrice);
+                this.updateTradeValue(currentPrice);
+                let trend = -1;
 
                 let closeTrade = false;
                 if(this.shorts.length >= 1 && this.longs.length == 0){
                     closeTrade = true;
                 }
-                if(this.shorts.length >= this.longs.length + 1){
+                if(this.shorts.length >= this.longs.length + this.MAX_DIFF){
                     closeTrade = true;
                 }
 
                 if(closeTrade) {
 
                     this.closeAllTrades(currentPrice);
-                    this.log("short", lastKline);
+                    this.logClose("short", lastKline.closetime);
 
                     this.longs = new Array();
                     this.shorts = new Array();
                     
-                    this.baseBid = this.totalAsset * 0.1;
+                    // TODO
+                    // this.baseBid = this.totalAsset * 0.1;
+                    trend = this.isDownOrUpTrend();
                 }
 
-                this.addShort(currentPrice, this.baseBid, lastKline.closetime);
+                if(trend == 1) {
+                    this.addLong(currentPrice, this.baseBid, lastKline.closetime);
+                } else {
+                    this.addShort(currentPrice, this.baseBid, lastKline.closetime);
+                }
                 this.initBasePriceRange();
 
                 currentPrice = this.getNextShortPrice();
@@ -108,54 +129,69 @@ class PercentTradeStrategy extends TradeStrategy {
 
     }
 
-    updatePNL(currentPrice) {
-        this.PNL = this.totalAsset;
-        for(let i = 0; i< this.longs.length; i++) {
-            this.PNL += this.longs[i].qty * currentPrice;
-        }
+    logAsset(currentPrice) {
+        
+        this.updateTradeValue(currentPrice);
+        const logMessage = 
+            `asset ${this.totalAsset}, ` + 
+            `trade value : ${this.tradeValue}`;
 
-        for(let i = 0; i< this.shorts.length; i++) {
-            this.PNL += this.shorts[i].amount - (this.shorts[i].qty * currentPrice) + this.shorts[i].amount;
-        }
+        console.log(logMessage);
     }
 
-    log(type, lastKline) {
+    logClose(type, time) {
 
-        const bounces = (this.longs.length > this.shorts.length ? this.longs.length : this.shorts.length) - 1;
+        const tradescnt = (this.longs.length + this.shorts.length);
         const startTime = new Date(
             Math.min(
                 ...this.longs.map(l => l.startTime.getTime()), 
                 ...this.shorts.map(s => s.startTime.getTime())
             )
         );
-        const endTime = lastKline.closetime;
+        const endTime = time;
         const hours = Math.round(datediff(endTime, startTime)/60);
 
         const logMessage = 
             `close ${type}, ` + 
             `total : ${this.totalAsset}, ` + 
-            `bounces : ${bounces}, ` + 
+            `trades : ${tradescnt}, ` + 
             `hours : ${hours}, ` + 
-            `time : ${formatDate(lastKline.closetime)}`;
+            `time : ${formatDate(time)}`;
 
         console.log(logMessage);
 
         // Add to buckets;
-        this.bucketBounces.add(bounces);
+        this.bucketTradeCount.add(tradescnt);
         this.bucketHours.add(hours);
 
         // console.log(this.bucketBounces.data)
         // console.log(this.bucketHours.data)
     }
 
-    closeAllTrades(currentPrice) {
+    updateTradeValue(currentPrice) {
+        this.tradeValue = 0;
         for(let i = 0; i< this.longs.length; i++) {
-            this.totalAsset += this.longs[i].qty * currentPrice;
+            this.tradeValue += (this.longs[i].qty * currentPrice);
         }
 
         for(let i = 0; i< this.shorts.length; i++) {
-            this.totalAsset += this.shorts[i].amount - (this.shorts[i].qty * currentPrice) + this.shorts[i].amount;
+            this.tradeValue += (this.shorts[i].amount - (this.shorts[i].qty * currentPrice) + this.shorts[i].amount);
         }
+
+    }
+
+    closeAllTrades(currentPrice) {
+
+        this.updateTradeValue(currentPrice);
+        this.totalAsset += this.tradeValue;
+
+        // for(let i = 0; i< this.longs.length; i++) {
+        //     this.totalAsset += this.longs[i].qty * currentPrice;
+        // }
+
+        // for(let i = 0; i< this.shorts.length; i++) {
+        //     this.totalAsset += this.shorts[i].amount - (this.shorts[i].qty * currentPrice) + this.shorts[i].amount;
+        // }
     }
 
     initBasePriceRange() {
@@ -207,6 +243,10 @@ class PercentTradeStrategy extends TradeStrategy {
             qty:amount/price,
             startTime 
         });
+        this.logAsset(price)
+        if(this.totalAsset < 0) {
+            throw new Error("No asset left!!!")
+        }
     }
 
     addShort(price, amount, startTime) {
@@ -217,6 +257,38 @@ class PercentTradeStrategy extends TradeStrategy {
             qty:amount/price,
             startTime 
         });
+        this.logAsset(price)
+        if(this.totalAsset < 0) {
+            throw new Error("No asset left!!!")
+        }
+    }
+
+    isDownOrUpTrend() {
+        // get last kline
+        const lastKline = this.klines[this.klines.length - 1];
+        
+        // get close values
+        const close = new Array();
+        for(let i = 0; i < this.klines.length; i++) {
+            close.push(this.klines[i].close);
+        }
+
+        // get indicators
+        const ema200 = EMA(close, 200);
+        const lastEma2000 = ema200[ema200.length -1];
+
+        if(lastKline.close > lastEma2000 && lastKline.open > lastEma2000) {
+            //uptrend
+            return 1;
+        }
+            
+        if(lastKline.close < lastEma2000 && lastKline.open < lastEma2000) {
+            // downtrend
+            return -1;
+        }
+
+        return 0;
+
     }
     
 }
