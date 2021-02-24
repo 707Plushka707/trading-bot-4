@@ -14,6 +14,11 @@ class Bucket {
         }
     }
 
+    sort(order) {
+        order = order == 1 ? 1 : -1;
+        return this.data.sort((a, b) => order == 1 ? a.category - b.category : b.category - a.category)
+    }
+
 }
 
 module.exports = Bucket;

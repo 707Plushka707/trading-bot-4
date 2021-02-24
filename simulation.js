@@ -4,6 +4,7 @@ const { consoleLogger, fileLogger } = require('./utils/logger');
 const BinanceService = require('./service/binance')
 const { KlineModel } = require('./model/klines')
 const PercentTradeStrategy = require('./strategy/percentstrategy');
+const SimpleStrategy = require('./strategy/simplestrategy');
 // const Twopercentanalyze = require('./analyse/twopercentanalyze');
 // const MacdEma200Strategy = require('./strategy/macdema200strategy');
 
@@ -106,8 +107,8 @@ const simulation = async() => {
         for(let i=0; i < klines.length; i++) {
             percentTradeStrategy.addKline(klines[i].toObject());
         }
-        console.log("hours", percentTradeStrategy.bucketHours)
-        console.log("trades", percentTradeStrategy.bucketTradeCount)
+        console.log("hours", percentTradeStrategy.bucketHours.sort())
+        console.log("trades", percentTradeStrategy.bucketHours.sort())
         
         // consoleLogger.info(`Simulation completed until ${higherCloseTime}`);
 
