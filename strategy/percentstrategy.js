@@ -52,13 +52,14 @@ class PercentTradeStrategy extends TradeStrategy {
             while(currentPrice < usedPrice) {
 
                 let trend = 1;
+                let PNL = this.getPNL(currentPrice);
 
-                let closeTrade = this.getPNL(currentPrice) > this.getTargetPNL();
+                let closeTrade = PNL > this.getTargetPNL();
 
                 if(closeTrade) {
 
                     this.closeAllTrades(currentPrice);
-                    this.logClose("long", lastKline.closetime);
+                    this.logClose("long", lastKline.closetime, PNL);
 
                     this.longs = new Array();
                     this.shorts = new Array();
@@ -85,13 +86,14 @@ class PercentTradeStrategy extends TradeStrategy {
             while(currentPrice > usedPrice) {
 
                 let trend = -1;
+                let PNL = this.getPNL(currentPrice);
 
-                let closeTrade = this.getPNL(currentPrice) > this.getTargetPNL();
+                let closeTrade = PNL > this.getTargetPNL();
 
                 if(closeTrade) {
 
                     this.closeAllTrades(currentPrice);
-                    this.logClose("short", lastKline.closetime);
+                    this.logClose("short", lastKline.closetime, PNL);
 
                     this.longs = new Array();
                     this.shorts = new Array();
@@ -128,13 +130,18 @@ class PercentTradeStrategy extends TradeStrategy {
         
         let tradeValue = this.getTradeValue(currentPrice);
         const logMessage = 
+            `longs ${this.longs.length}, ` + 
+            `shorts ${this.shorts.length}, ` + 
+            `pnl ${this.getPNL(currentPrice)}, ` + 
+            `range ${this.range}, ` + 
+            `price ${currentPrice}, ` + 
             `asset ${this.totalAsset}, ` + 
             `trade value : ${tradeValue}`;
 
         console.log(logMessage);
     }
 
-    logClose(type, time) {
+    logClose(type, time, PNL) {
 
         const tradescnt = (this.longs.length + this.shorts.length);
         const startTime = new Date(
@@ -149,6 +156,7 @@ class PercentTradeStrategy extends TradeStrategy {
         const logMessage = 
             `close ${type}, ` + 
             `total : ${this.totalAsset}, ` + 
+            `PNL : ${PNL}, ` + 
             `trades : ${tradescnt}, ` + 
             `hours : ${hours}, ` + 
             `time : ${formatDate(time)}`;
@@ -158,6 +166,8 @@ class PercentTradeStrategy extends TradeStrategy {
         // Add to buckets;
         this.bucketTradeCount.add(tradescnt);
         this.bucketHours.add(hours);
+        console.log("hours", this.bucketHours.sort())
+        console.log("trades", this.bucketHours.sort())
 
         // console.log(this.bucketBounces.data)
         // console.log(this.bucketHours.data)
