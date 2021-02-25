@@ -66,76 +66,6 @@ class PercentTradeStrategy2 {
             return;
         }
 
-        return;
-
-        if(price > nextLongPrice) {
-            let currentPrice = nextLongPrice;
-
-            while(currentPrice < price) {
-
-                let trend = 1;
-                let PNL = this.getPNL(currentPrice);
-
-                let closeTrade = PNL > this.getTargetPNL();
-
-                if(closeTrade) {
-
-                    this.closeAllTrades(currentPrice);
-                    this.logClose("long", lastKline.closetime, PNL);
-
-                    this.longs = new Array();
-                    this.shorts = new Array();
-
-                    this.baseBid = this.getBidPrice();
-                    trend = this.isDownOrUpTrend();
-                }
-
-                if(trend == 1) {
-                    this.addLong(currentPrice, this.baseBid, lastKline.closetime);
-                } else {
-                    this.addShort(currentPrice, this.baseBid, lastKline.closetime);
-                }
-                this.initBasePriceRange();
-
-                currentPrice = this.getNextLongPrice();
-            }
-            return;
-        }
-
-        if(price < nextShortPrice) {
-            let currentPrice = nextShortPrice;
-
-            while(currentPrice > price) {
-
-                let trend = -1;
-                let PNL = this.getPNL(currentPrice);
-
-                let closeTrade = PNL > this.getTargetPNL();
-
-                if(closeTrade) {
-
-                    this.closeAllTrades(currentPrice);
-                    this.logClose("short", lastKline.closetime, PNL);
-
-                    this.longs = new Array();
-                    this.shorts = new Array();
-                    
-                    this.baseBid = this.getBidPrice();
-                    trend = this.isDownOrUpTrend();
-                }
-
-                if(trend == 1) {
-                    this.addLong(currentPrice, this.baseBid, lastKline.closetime);
-                } else {
-                    this.addShort(currentPrice, this.baseBid, lastKline.closetime);
-                }
-                this.initBasePriceRange();
-
-                currentPrice = this.getNextShortPrice();
-            }
-            return;
-        }
-
     }
 
     willClose(price) {
@@ -169,6 +99,36 @@ class PercentTradeStrategy2 {
         return false;
 
 
+    }
+
+    getNextLongPrice() {
+        let nextLongPrice = this.basePrice;
+
+        const maxLong = this.longs.length == 0 ? -1 : Math.max(...this.longs.map(l => l.price));
+        const maxShort = this.shorts.length == 0 ? -1 : Math.max(...this.shorts.map(s => s.price));
+
+        const refPrice = maxLong == -1 ? maxShort : maxLong;
+
+        while(nextLongPrice <= refPrice) {
+            nextLongPrice += this.range;
+        }
+
+        return nextLongPrice;
+    }
+
+    getNextShortPrice() {
+        let nextShortPrice = this.basePrice;
+
+        const minLong = this.longs.length == 0 ? -1 : Math.min(...this.longs.map(l => l.price));
+        const minShort = this.shorts.length == 0 ? -1 : Math.min(...this.shorts.map(s => s.price));
+
+        const refPrice = minShort == -1 ? minLong : minShort;
+
+        while(nextShortPrice >= refPrice) {
+            nextShortPrice -= this.range;
+        }
+
+        return nextShortPrice;
     }
 
     initBaseValues(price) {
@@ -301,43 +261,6 @@ class PercentTradeStrategy2 {
     //----------------------
     //----------------------
 
-
-
-    getTargetPNL() {
-        let targetPNL = this.baseBid * this.SPREAD;
-        targetPNL = targetPNL - (targetPNL * 0.01);
-        return targetPNL;
-    }
-
-    getNextLongPrice() {
-        let nextLongPrice = this.basePrice;
-
-        const maxLong = this.longs.length == 0 ? -1 : Math.max(...this.longs.map(l => l.price));
-        const maxShort = this.shorts.length == 0 ? -1 : Math.max(...this.shorts.map(s => s.price));
-
-        const refPrice = maxLong == -1 ? maxShort : maxLong;
-
-        while(nextLongPrice <= refPrice) {
-            nextLongPrice += this.range;
-        }
-
-        return nextLongPrice;
-    }
-
-    getNextShortPrice() {
-        let nextShortPrice = this.basePrice;
-
-        const minLong = this.longs.length == 0 ? -1 : Math.min(...this.longs.map(l => l.price));
-        const minShort = this.shorts.length == 0 ? -1 : Math.min(...this.shorts.map(s => s.price));
-
-        const refPrice = minShort == -1 ? minLong : minShort;
-
-        while(nextShortPrice >= refPrice) {
-            nextShortPrice -= this.range;
-        }
-
-        return nextShortPrice;
-    }
 
     // addLong(price, amount, startTime) {
     //     this.totalAsset -= amount;
