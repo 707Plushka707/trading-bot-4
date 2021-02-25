@@ -1,5 +1,7 @@
-const a = new Array();
+const a = {
+    hello:1,
+    world:2
+}
 
-const b = Math.max(...a);
-
-console.log(b)
+const {hello, world:b } = { ...a }
+console.log({hello, b})

@@ -46,7 +46,7 @@ class TradeStrategy extends EventEmmiter {
 
         if(this.klines.length > this.maxHistory) {
             this.klines.shift();
-            this.evaluate();
+            this.evaluate(kline.close, kline.closetime);
         }
     }
 
@@ -75,7 +75,6 @@ class TradeStrategy extends EventEmmiter {
         }
 
         return 0;
-
     }
 }
 
