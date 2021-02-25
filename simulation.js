@@ -93,7 +93,6 @@ const simulation = async() => {
     let higherCloseTime = new Date(firstKline.closetime);
     higherCloseTime.setDate(higherCloseTime.getDate() + 1);
 
-    // const percentTradeStrategy = new simulationConfig.Strategy(simulationConfig.maxHistory);
     const percentTradeStrategy = new PercentTradeStrategy2();
 
     do {
@@ -114,18 +113,18 @@ const simulation = async() => {
                 continue;
             }
 
-            if(price > percentTradeStrategy.nextLongPrice) {
+            if(price >= percentTradeStrategy.nextLongPrice) {
                 let currentPrice = percentTradeStrategy.nextLongPrice;
-                while(currentPrice < price) {
+                while(currentPrice <= price) {
                     percentTradeStrategy.evaluate(currentPrice, time);
                     currentPrice = percentTradeStrategy.nextLongPrice;
                 }
                 continue;
             }
 
-            if(price < percentTradeStrategy.nextShortPrice) {
+            if(price <= percentTradeStrategy.nextShortPrice) {
                 let currentPrice = percentTradeStrategy.nextShortPrice;
-                while(currentPrice < price) {
+                while(currentPrice >= price) {
                     percentTradeStrategy.evaluate(currentPrice, time);
                     currentPrice = percentTradeStrategy.nextShortPrice;
                 }
@@ -135,7 +134,7 @@ const simulation = async() => {
             percentTradeStrategy.evaluate(price, time);
         }
         console.log("hours", percentTradeStrategy.bucketHours.sort())
-        console.log("trades", percentTradeStrategy.bucketHours.sort())
+        console.log("trades", percentTradeStrategy.bucketTradeCount.sort())
         
         lowerClosetime = new Date(klines[klines.length - 1].closetime);
         higherCloseTime = new Date(klines[klines.length - 1].closetime);

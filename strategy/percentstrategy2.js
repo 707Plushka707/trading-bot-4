@@ -39,6 +39,12 @@ class PercentTradeStrategy2 {
         }
 
         if(price >= this.nextLongPrice) {
+
+            if(this.willClose(price)) {
+                this.closeAllTrades(price, time);
+                this.initBaseValues(price);
+            }
+
             this.addLong(price, this.baseBidQty, time);
 
             this.nextLongPrice = this.getNextLongPrice();
@@ -47,6 +53,12 @@ class PercentTradeStrategy2 {
         }
 
         if(price <= this.nextShortPrice) {
+
+            if(this.willClose(price)) {
+                this.closeAllTrades(price, time);
+                this.initBaseValues(price);
+            }
+
             this.addShort(price, this.baseBidQty, time);
 
             this.nextLongPrice = this.getNextLongPrice();
@@ -126,6 +138,39 @@ class PercentTradeStrategy2 {
 
     }
 
+    willClose(price) {
+        
+        // Close on long
+        if(price >= this.nextLongPrice) {
+            // Only 1 trade open
+            if(this.longs.length == 1 && this.shorts.length == 0) {
+                return true;
+            }
+
+            // Multiple trades open
+            if(this.longs.length >= this.shorts.length + 2) {
+                return true;
+            }
+        }
+        
+        // Close on short
+        if(price <= this.nextShortPrice) {
+            // Only 1 trade open
+            if(this.shorts.length == 1 && this.longs.length == 0) {
+                return true;
+            }
+
+            // Multiple trades open
+            if(this.shorts.length >= this.longs.length + 2) {
+                return true;
+            }
+        }
+
+        return false;
+
+
+    }
+
     initBaseValues(price) {
         this.basePrice = price;
         this.baseBidQty = (this.totalAsset * this.BID_PERCENTAGE)/price;
@@ -133,22 +178,88 @@ class PercentTradeStrategy2 {
         this.range = this.SPREAD * this.basePrice;
     }
 
-    getTargetPNL() {
-        let targetPNL = this.baseBid * this.SPREAD;
-        targetPNL = targetPNL - (targetPNL * 0.01);
-        return targetPNL;
+    getTradeValue(price) {
+        let tradeValue = 0;
+        for(let i = 0; i< this.longs.length; i++) {
+            tradeValue += (this.longs[i].qty * price);
+        }
+
+        for(let i = 0; i< this.shorts.length; i++) {
+            tradeValue += (this.shorts[i].amount - (this.shorts[i].qty * price) + this.shorts[i].amount);
+        }
+
+        return tradeValue;
     }
 
-    logAsset(currentPrice) {
+    getPNL(price) {
+        let tradeValue = this.getTradeValue(price);
+        let originalValue = 0;
+
+        for(let i = 0; i< this.longs.length; i++) {
+            originalValue += (this.longs[i].amount);
+        }
+
+        for(let i = 0; i< this.shorts.length; i++) {
+            originalValue += (this.shorts[i].amount);
+        }
+
+        return tradeValue - originalValue;
+    }
+
+    closeAllTrades(price, time) {
         
-        let tradeValue = this.getTradeValue(currentPrice);
+        let pnl = this.getPNL(price);
+        let type = price >= this.nextLongPrice ? "long" : "short";
+        let tradeValue = this.getTradeValue(price);
+
+        this.totalAsset += tradeValue;
+        this.logClose(type, time, pnl);
+
+        this.longs = new Array();
+        this.shorts = new Array();
+        
+    }
+
+    addLong(price, qty, time) {
+        const amount = qty/price;
+        this.totalAsset -= amount;
+        this.longs.push({
+            amount,
+            price,
+            qty,
+            time 
+        });
+        this.logAsset(price)
+        if(this.totalAsset < 0) {
+            throw new Error("No asset left!!!")
+        }
+    }
+
+    addShort(price, qty, time) {
+        const amount = qty/price;
+        this.totalAsset -= amount;
+        this.shorts.push({
+            amount,
+            price,
+            qty,
+            time 
+        });
+        this.logAsset(price)
+        if(this.totalAsset < 0) {
+            throw new Error("No asset left!!!")
+        }
+    }
+
+    logAsset(price) {
+        
+        let tradeValue = this.getTradeValue(price);
         const logMessage = 
             `longs ${this.longs.length}, ` + 
             `shorts ${this.shorts.length}, ` + 
-            `pnl ${this.getPNL(currentPrice)}, ` + 
-            `range ${this.range}, ` + 
-            `price ${currentPrice}, ` + 
             `asset ${this.totalAsset}, ` + 
+            `pnl ${this.getPNL(price)}, ` + 
+            `range ${this.range}, ` + 
+            `price ${price}, ` + 
             `trade value : ${tradeValue}`;
 
         console.log(logMessage);
@@ -159,8 +270,8 @@ class PercentTradeStrategy2 {
         const tradescnt = (this.longs.length + this.shorts.length);
         const startTime = new Date(
             Math.min(
-                ...this.longs.map(l => l.startTime.getTime()), 
-                ...this.shorts.map(s => s.startTime.getTime())
+                ...this.longs.map(l => l.time.getTime()), 
+                ...this.shorts.map(s => s.time.getTime())
             )
         );
         const endTime = time;
@@ -180,52 +291,22 @@ class PercentTradeStrategy2 {
         this.bucketTradeCount.add(tradescnt);
         this.bucketHours.add(hours);
         console.log("hours", this.bucketHours.sort())
-        console.log("trades", this.bucketHours.sort())
+        console.log("trades", this.bucketTradeCount.sort())
 
         // console.log(this.bucketBounces.data)
         // console.log(this.bucketHours.data)
     }
 
-    getTradeValue(currentPrice) {
-        let tradeValue = 0;
-        for(let i = 0; i< this.longs.length; i++) {
-            tradeValue += (this.longs[i].qty * currentPrice);
-        }
+    //----------------------
+    //----------------------
+    //----------------------
 
-        for(let i = 0; i< this.shorts.length; i++) {
-            tradeValue += (this.shorts[i].amount - (this.shorts[i].qty * currentPrice) + this.shorts[i].amount);
-        }
 
-        return tradeValue;
-    }
 
-    getPNL(currentPrice) {
-        let tradeValue = this.getTradeValue(currentPrice);
-        let originalValue = 0;
-
-        for(let i = 0; i< this.longs.length; i++) {
-            originalValue += (this.longs[i].amount);
-        }
-
-        for(let i = 0; i< this.shorts.length; i++) {
-            originalValue += (this.shorts[i].amount);
-        }
-
-        return tradeValue - originalValue;
-    }
-
-    closeAllTrades(currentPrice) {
-
-        let tradeValue = this.getTradeValue(currentPrice);
-        this.totalAsset += tradeValue;
-
-        // for(let i = 0; i< this.longs.length; i++) {
-        //     this.totalAsset += this.longs[i].qty * currentPrice;
-        // }
-
-        // for(let i = 0; i< this.shorts.length; i++) {
-        //     this.totalAsset += this.shorts[i].amount - (this.shorts[i].qty * currentPrice) + this.shorts[i].amount;
-        // }
+    getTargetPNL() {
+        let targetPNL = this.baseBid * this.SPREAD;
+        targetPNL = targetPNL - (targetPNL * 0.01);
+        return targetPNL;
     }
 
     getNextLongPrice() {
@@ -272,21 +353,6 @@ class PercentTradeStrategy2 {
     //     }
     // }
 
-    addLong(price, qty, time) {
-        const amount = qty/price;
-        this.totalAsset -= amount;
-        this.longs.push({
-            amount,
-            price,
-            qty,
-            time 
-        });
-        this.logAsset(price)
-        if(this.totalAsset < 0) {
-            throw new Error("No asset left!!!")
-        }
-    }
-
     // addShort(price, amount, startTime) {
     //     this.totalAsset -= amount;
     //     this.shorts.push({
@@ -300,49 +366,6 @@ class PercentTradeStrategy2 {
     //         throw new Error("No asset left!!!")
     //     }
     // }
-
-    addShort(price, qty, time) {
-        const amount = qty/price;
-        this.totalAsset -= amount;
-        this.shorts.push({
-            amount,
-            price,
-            qty,
-            time 
-        });
-        this.logAsset(price)
-        if(this.totalAsset < 0) {
-            throw new Error("No asset left!!!")
-        }
-    }
-
-    isDownOrUpTrend() {
-        // get last kline
-        const lastKline = this.klines[this.klines.length - 1];
-        
-        // get close values
-        const close = new Array();
-        for(let i = 0; i < this.klines.length; i++) {
-            close.push(this.klines[i].close);
-        }
-
-        // get indicators
-        const ema200 = EMA(close, 200);
-        const lastEma2000 = ema200[ema200.length -1];
-
-        if(lastKline.close > lastEma2000 && lastKline.open > lastEma2000) {
-            //uptrend
-            return 1;
-        }
-            
-        if(lastKline.close < lastEma2000 && lastKline.open < lastEma2000) {
-            // downtrend
-            return -1;
-        }
-
-        return 0;
-
-    }
     
 }
 

@@ -1,96 +1,59 @@
 
 const { sleep } = require('./utils/sleep')
-const { consoleLogger, fileLogger } = require('./utils/logger');
-const BinanceService = require('./service/binance')
-const { KlineModel } = require('./model/klines')
-const PercentTradeStrategy = require('./strategy/percentstrategy');
-// const Twopercentanalyze = require('./analyse/twopercentanalyze');
-// const MacdEma200Strategy = require('./strategy/macdema200strategy');
+const PercentTradeStrategy2 = require('./strategy/percentstrategy2');
 
-const simulationConfig = {
-    symbol: 'LITUSDT',
-    interval: '1m',
-    startTime: new Date(2019,9,25),
-    maxHistory: 2,
-    Strategy: PercentTradeStrategy
-};
-
-const testKlines = {
+const testData = {
 
     simpleTest : [
         {
-            open: 100,
-            opentime: new Date('2021-01-01 13:15:00'),
-            close: 102,
-            closetime: new Date('2021-01-01 13:15:59'),
+            price: 100,
+            time: new Date('2021-01-01 13:15:00'),
         }, 
         {
-            open: 102,
-            opentime: new Date('2021-01-01 13:16:00'),
-            close: 100,
-            closetime: new Date('2021-01-01 13:16:59'),
-        }, 
-        {
-            open: 100,
-            opentime: new Date('2021-01-01 13:17:00'),
-            close: 101,
-            closetime: new Date('2021-01-01 13:17:59'),
-        }, 
-        {
-            open: 101,
-            opentime: new Date('2021-01-01 13:18:00'),
-            close: 102,
-            closetime: new Date('2021-01-01 13:18:59'),
-        }, 
-        {
-            open: 102,
-            opentime: new Date('2021-01-01 13:19:00'),
-            close: 103,
-            closetime: new Date('2021-01-01 13:19:59'),
-        }, 
-        {
-            open: 103,
-            opentime: new Date('2021-01-01 13:20:00'),
-            close: 104,
-            closetime: new Date('2021-01-01 13:20:59'),
-        }, 
-        {
-            open: 104,
-            opentime: new Date('2021-01-01 13:21:00'),
-            close: 105,
-            closetime: new Date('2021-01-01 13:21:59'),
+            price: 98,
+            time: new Date('2021-01-01 13:16:00'),
         }, 
     ]
 };
 
 const test = async() => {
 
-    consoleLogger.info("START simulation");
+    console.log("START simulation");
 
-    const percentTradeStrategy = new simulationConfig.Strategy(simulationConfig.maxHistory);
+    const percentTradeStrategy = new PercentTradeStrategy2();
 
-    do {
-        const klines = 
-            await KlineModel.find(query)
-                .sort({ closetime: 1 })
-    
-        if(klines.length == 0) {
-            break;
-        }
-
-        for(let i=0; i < klines.length; i++) {
-            percentTradeStrategy.addKline(klines[i].toObject());
-        }
+    for(let i = 0; i<testData.simpleTest.length; i++) {
         
-        consoleLogger.info(`Simulation completed until ${higherCloseTime}`);
+        let { price, time } = { ...testData.simpleTest[i] };
 
-        lowerClosetime = new Date(klines[klines.length - 1].closetime);
-        higherCloseTime = new Date(klines[klines.length - 1].closetime);
-        higherCloseTime.setDate(higherCloseTime.getDate() + 30);
+        if(!percentTradeStrategy.isInit) {
+            percentTradeStrategy.evaluate(price, time);
+            continue;
+        }
 
-    } while(true);
+        if(price >= percentTradeStrategy.nextLongPrice) {
+            let currentPrice = percentTradeStrategy.nextLongPrice;
+            while(currentPrice <= price) {
+                percentTradeStrategy.evaluate(currentPrice, time);
+                currentPrice = percentTradeStrategy.nextLongPrice;
+            }
+            continue;
+        }
 
-    consoleLogger.info(`END simulation`);
+        if(price <= percentTradeStrategy.nextShortPrice) {
+            let currentPrice = percentTradeStrategy.nextShortPrice;
+            while(currentPrice >= price) {
+                percentTradeStrategy.evaluate(currentPrice, time);
+                currentPrice = percentTradeStrategy.nextShortPrice;
+            }
+            continue;
+        }
+
+        percentTradeStrategy.evaluate(price, time);
+
+    }
+
+    console.log(`END test`);
 }
 
 module.exports = { test }
