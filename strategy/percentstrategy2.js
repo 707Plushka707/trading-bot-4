@@ -221,7 +221,7 @@ class PercentTradeStrategy2 {
     }
 
     addLong(price, qty, time) {
-        const amount = qty/price;
+        const amount = qty*price;
         this.totalAsset -= amount;
         this.longs.push({
             amount,
@@ -236,7 +236,7 @@ class PercentTradeStrategy2 {
     }
 
     addShort(price, qty, time) {
-        const amount = qty/price;
+        const amount = qty*price;
         this.totalAsset -= amount;
         this.shorts.push({
             amount,
